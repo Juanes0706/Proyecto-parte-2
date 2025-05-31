@@ -77,6 +77,9 @@ async def crear_bus(
                 # Usar ruta con ID del bus para organizar imágenes
                 file_path = f"{bus_id}/{file_name}"
                 print(f"Intentando subir archivo a {bucket_name}/{file_path}")
+            except Exception as e:
+                print(f"Error al procesar imagen: {str(e)}")
+                # Continuar con el flujo normal
 
             try:
                 # Subir la imagen al bucket
