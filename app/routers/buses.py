@@ -55,6 +55,41 @@ async def buses_create_page(request: Request):
         {"request": request}
     )
 
+@router.get("/buses/crear", include_in_schema=False)
+async def buses_crear_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_create.html",
+        {"request": request}
+    )
+    
+@router.get("/buses/edit", include_in_schema=False)
+async def buses_edit_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_edit.html",
+        {"request": request}
+    )
+
+@router.get("/buses/editar", include_in_schema=False)
+async def buses_editar_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_edit.html",
+        {"request": request}
+    )
+
+@router.get("/buses/delete", include_in_schema=False)
+async def buses_delete_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_delete.html",
+        {"request": request}
+    )
+
+@router.get("/buses/eliminar", include_in_schema=False)
+async def buses_eliminar_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_delete.html",
+        {"request": request}
+    )
+
 @router.get("/buses/edit", include_in_schema=False)
 async def buses_edit_page(request: Request):
     return templates.TemplateResponse(
