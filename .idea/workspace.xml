@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="07c207c7-e01f-47d9-8ff1-94d32fac07a7" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/templates/base.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/bus_management_system.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/bus_management_system2.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/buses.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/index.html" afterDir="false" />
-    </list>
+    <list default="true" id="07c207c7-e01f-47d9-8ff1-94d32fac07a7" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -60,7 +54,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1748641100327</updated>
-      <workItem from="1748641101157" duration="10175000" />
+      <workItem from="1748641101157" duration="10851000" />
     </task>
     <servers />
   </component>

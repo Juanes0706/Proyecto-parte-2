@@ -11,8 +11,19 @@
         <h1>Crear Bus</h1>
         <form action="/api/buses" method="post" enctype="multipart/form-data">
             <div class="mb-3">
+                <label for="nombre" class="form-label">Nombre del Bus</label>
+                <input type="text" class="form-control" id="nombre" name="nombre" required />
+            </div>
+            <div class="mb-3">
                 <label for="tipo" class="form-label">Tipo de Bus</label>
                 <input type="text" class="form-control" id="tipo" name="tipo" required />
+            </div>
+            <div class="mb-3">
+                <label for="esta_activo" class="form-label">Estado del Bus</label>
+                <select class="form-select" id="esta_activo" name="esta_activo" required>
+                    <option value="true" selected>Activo</option>
+                    <option value="false">Inactivo</option>
+                </select>
             </div>
             <div class="mb-3">
                 <label for="imagen" class="form-label">Imagen del Bus</label>

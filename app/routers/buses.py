@@ -13,7 +13,9 @@ templates = Jinja2Templates(directory="templates")
 
 @router.post("/api/buses")
 async def crear_bus(
+    nombre: str = Form(...),
     tipo: str = Form(...),
+    esta_activo: str = Form(...),
     imagen: UploadFile = File(None),
     supabase=Depends(get_db)
 ):
@@ -29,10 +31,13 @@ async def crear_bus(
         with open(image_path, "wb") as buffer:
             shutil.copyfileobj(imagen.file, buffer)
 
+    esta_activo_bool = esta_activo.lower() == "true"
+
     data = {
         "id": bus_id,
+        "nombre": nombre,
         "tipo": tipo,
-        "esta_activo": True,
+        "esta_activo": esta_activo_bool,
         "created_at": datetime.utcnow().isoformat(),
         "imagen_url": image_path if image_path else None
     }
