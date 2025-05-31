@@ -193,7 +193,7 @@ async def listar_buses(
 
 @router.post("/api/buses/{bus_id}/estaciones/{estacion_id}")
 async def asociar_estacion(
-        bus_id: str,
+                bus_id: int,
         estacion_id: str,
         supabase=Depends(get_db)
 ):
@@ -221,8 +221,8 @@ async def asociar_estacion(
 
 @router.delete("/api/buses/{bus_id}/estaciones/{estacion_id}")
 async def desasociar_estacion(
-        bus_id: str,
-        estacion_id: str,
+        bus_id: int,
+        estacion_id: int,
         supabase=Depends(get_db)
 ):
     # Eliminamos la relación entre el bus y la estación
@@ -245,7 +245,7 @@ async def desasociar_estacion(
 
 @router.post("/api/buses/{bus_id}/imagen")
 async def subir_imagen_bus(
-        bus_id: str,
+        bus_id: int,
         imagen: UploadFile = File(...),
         supabase=Depends(get_db)
 ):
@@ -325,7 +325,7 @@ async def subir_imagen_bus(
 
 @router.get("/api/buses/{bus_id}")
 async def obtener_bus(
-        bus_id: str,
+        bus_id: int,
         supabase=Depends(get_db)
 ):
     """Obtiene los detalles de un bus específico con sus imágenes"""
@@ -362,7 +362,7 @@ async def obtener_bus(
 
 @router.delete("/api/buses/{bus_id}")
 async def eliminar_bus(
-        bus_id: str,
+        bus_id: int,
         supabase=Depends(get_db)
 ):
     """Elimina un bus y todos sus recursos asociados"""
