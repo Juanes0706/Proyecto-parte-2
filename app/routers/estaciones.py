@@ -26,7 +26,6 @@ async def crear_estacion(
         supabase=Depends(get_db)
 ):
     estacion_data = {
-        "id": str(uuid.uuid4()),
         "nombre": nombre,
         "localidad": localidad,
         "esta_activo": esta_activo,
@@ -40,13 +39,16 @@ async def crear_estacion(
     estacion_id = data[1][0]["id"]
     imagenes_urls = []
 
-    for imagen in imagenes:
-        contents = await imagen.read()
-        file_path = f"estaciones/{estacion_id}/{imagen.filename}"
+            bucket_name = "estaciones-imagenes"
 
-        # Subir imagen a Supabase Storage
-        supabase.storage.from_("imagenes").upload(file_path, contents)
-        url = supabase.storage.from_("imagenes").get_public_url(file_path)
+            for imagen in imagenes:
+        contents = await imagen.read()
+        # Usar una ruta más simple dentro del bucket específico
+        file_path = f"{estacion_id}/{imagen.filename}"
+
+        # Subir imagen al bucket específico de estaciones
+        supabase.storage.from_(bucket_name).upload(file_path, contents)
+        url = supabase.storage.from_(bucket_name).get_public_url(file_path)
 
         imagen_data = {
             "url": url,
@@ -136,12 +138,15 @@ async def actualizar_estacion(
     # Procesar nuevas imágenes si se proporcionaron
     if imagenes:
         imagenes_urls = []
-        for imagen in imagenes:
-            contents = await imagen.read()
-            file_path = f"estaciones/{estacion_id}/{imagen.filename}"
+                    bucket_name = "estaciones-imagenes"
 
-            supabase.storage.from_("imagenes").upload(file_path, contents)
-            url = supabase.storage.from_("imagenes").get_public_url(file_path)
+                    for imagen in imagenes:
+            contents = await imagen.read()
+            # Usar una ruta más simple dentro del bucket específico
+            file_path = f"{estacion_id}/{imagen.filename}"
+
+            supabase.storage.from_(bucket_name).upload(file_path, contents)
+            url = supabase.storage.from_(bucket_name).get_public_url(file_path)
 
             imagen_data = {
                 "url": url,
@@ -175,11 +180,12 @@ async def eliminar_estacion(
     if error:
         raise HTTPException(status_code=400, detail=str(error))
 
-    # Eliminar archivos del storage
+    # Eliminar archivos del bucket específico de estaciones
+    bucket_name = "estaciones-imagenes"
     for imagen in imagenes[1]:
         try:
             file_path = imagen["url"].split("/")[-1]
-            supabase.storage.from_("imagenes").remove([f"estaciones/{estacion_id}/{file_path}"])
+            supabase.storage.from_(bucket_name).remove([f"{estacion_id}/{file_path}"])
         except Exception as e:
             print(f"Error eliminando archivo: {e}")
 
@@ -217,10 +223,11 @@ async def eliminar_imagen_estacion(
     if not imagen[1]:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
 
-    # Eliminar archivo del storage
+    # Eliminar archivo del bucket específico de estaciones
+    bucket_name = "estaciones-imagenes"
     try:
         file_path = imagen[1][0]["url"].split("/")[-1]
-        supabase.storage.from_("imagenes").remove([f"estaciones/{estacion_id}/{file_path}"])
+        supabase.storage.from_(bucket_name).remove([f"{estacion_id}/{file_path}"])
     except Exception as e:
         print(f"Error eliminando archivo: {e}")
 

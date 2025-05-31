@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS buses (
   nombre TEXT NOT NULL,
   tipo TEXT NOT NULL,
   esta_activo BOOLEAN DEFAULT TRUE,
-  -- Eliminamos imagen_url ya que causa problemas
+  imagen_url TEXT, -- Añadimos imagen_url como TEXT (puede ser NULL)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
   -- También eliminamos updated_at para simplificar
 );
