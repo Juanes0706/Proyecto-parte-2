@@ -3,6 +3,11 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader
+from app.routers import buses, estaciones
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+
+app = FastAPI(title="Sistema de Gestión de Buses")
 
 # Archivos estáticos y templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -13,11 +18,6 @@ jinja_env = Environment(
 )
 templates = Jinja2Templates(directory="templates")
 templates.env = jinja_env
-from app.routers import buses, estaciones
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-
-app = FastAPI(title="Sistema de Gestión de Buses")
 
 # Configuración de CORS
 app.add_middleware(
@@ -27,10 +27,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Archivos estáticos y templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
 # Ruta principal
 @app.get("/", response_class=HTMLResponse)
