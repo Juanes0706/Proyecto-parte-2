@@ -8,8 +8,8 @@ import uuid
 import os
 import shutil
 import json
-# Importar nuestra utilidad para convertir UUIDs
-from ..utils.uuid_converter import uuid_to_bigint, parse_id
+# Importar nuestra utilidad para convertir IDs
+from ..utils.id_converter import parse_id, is_valid_id
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -24,30 +24,29 @@ async def crear_bus(
 ):
     """Crea un nuevo bus con un enfoque simplificado para resolver errores"""
     try:
-        # Ya no generamos ID manualmente, usaremos el autonumérico
         # Convertimos a booleano
         esta_activo_bool = esta_activo.lower() == "true"
 
-        # Crear datos básicos del bus sin ID (será generado por la base de datos)
+        # Crear datos básicos del bus SIN ID - será generado por la secuencia en Supabase
         bus_data = {
             "nombre": nombre,
             "tipo": tipo,
             "esta_activo": esta_activo_bool,
-            "created_at": datetime.utcnow().isoformat(),
             "imagen_url": None  # Establecer explícitamente como NULL
         }
 
         print(f"Creando bus con datos: {bus_data}")
 
-        # Insertar el bus y obtener el ID generado automáticamente
+        # Insertar el bus y dejar que Supabase genere el ID automáticamente
         result, error = supabase.table("buses").insert(bus_data).execute()
 
         if error:
             print(f"Error al insertar bus: {error}")
             raise HTTPException(status_code=400, detail=str(error))
 
-        # Obtener el ID generado por la base de datos
+        # Obtener el ID numérico generado por la base de datos
         bus_id = result[1][0]["id"]
+        print(f"Bus creado con ID: {bus_id}")
 
         # Si el bus se creó correctamente y hay imagen, procesarla después
         if imagen:
