@@ -1,3 +1,9 @@
+from fastapi import APIRouter, Depends, HTTPException
+from ..database import get_db
+from datetime import datetime
+
+router = APIRouter()
+
 @router.post("/api/buses/{bus_id}/estaciones/{estacion_id}")
 async def asociar_estacion(
         bus_id: str,
