@@ -67,10 +67,8 @@ async def crear_bus(
                     try:
                         supabase.storage.create_bucket(bucket_name, options={"public": True})
                         print(f"Bucket {bucket_name} creado exitosamente")
-                    except Exception:
-                        print(f"Error al crear bucket {bucket_name}")
-                    finally:
-                        pass
+                    except Exception as e2:
+                        print(f"Error al crear bucket {bucket_name}: {str(e2)}")
 
                 # Simplificar la subida de imágenes y usar la tabla de imagenes
                 extension = os.path.splitext(imagen.filename)[1] if '.' in imagen.filename else '.jpg'
@@ -80,31 +78,26 @@ async def crear_bus(
                 file_path = f"{bus_id}/{file_name}"
                 print(f"Intentando subir archivo a {bucket_name}/{file_path}")
 
-                try:
-                    # Subir la imagen al bucket
-                    result = supabase.storage.from_(bucket_name).upload(file_path, contents)
-                    print(f"Resultado de subida: {result}")
-                    imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
-                    print(f"URL de imagen generada: {imagen_url}")
+            try:
+                # Subir la imagen al bucket
+                result = supabase.storage.from_(bucket_name).upload(file_path, contents)
+                print(f"Resultado de subida: {result}")
+                imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+                print(f"URL de imagen generada: {imagen_url}")
 
-                    # Crear registro en la tabla imagenes en lugar de actualizar buses
-                    imagen_data = {
-                        "url": imagen_url,
-                        "bus_id": bus_id,  # Asociar con el bus
-                        "created_at": datetime.utcnow().isoformat()
-                    }
+                # Crear registro en la tabla imagenes en lugar de actualizar buses
+                imagen_data = {
+                    "url": imagen_url,
+                    "bus_id": bus_id,  # Asociar con el bus
+                    "created_at": datetime.utcnow().isoformat()
+                }
 
-                    print(f"Guardando imagen en la tabla imagenes: {imagen_data}")
-                    imagen_result, imagen_error = supabase.table("imagenes").insert(imagen_data).execute()
+                print(f"Guardando imagen en la tabla imagenes: {imagen_data}")
+                imagen_result, imagen_error = supabase.table("imagenes").insert(imagen_data).execute()
 
-                    if imagen_error:
-                        print(f"Error al guardar en tabla imagenes: {imagen_error}")
-                        # No interrumpir la respuesta, el bus y la imagen ya existen
-                    else:
-                        print(f"Imagen guardada correctamente en la tabla imagenes")
-
-                    # Devolvemos la respuesta incluyendo la URL de la imagen
-                    return {"message": "Bus creado con imagen", "bus_id": bus_id, "imagen_url": imagen_url}
+                if imagen_error:
+                    print(f"Error al guardar en tabla imagenes: {imagen_error}")
+                    # No interrumpir la respuesta, el bus y la imagen ya existen
             except Exception as img_error:
                 print(f"Error procesando imagen: {img_error}")
                 # Continuar sin imagen
