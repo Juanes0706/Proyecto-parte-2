@@ -91,31 +91,67 @@ async def crear_bus(
 
             try:
                 # Subir la imagen al bucket con manejo para diferentes versiones de API
+                print(f"Intentando subir imagen al bucket '{bucket_name}', ruta '{file_path}'")
+                print(f"Tamaño de contenido: {len(contents)} bytes")
+                print(f"Tipo de contenido: {imagen.content_type}")
+
+                # Forzar un pequeño retraso antes de la subida
+                import time
+                time.sleep(1)
+
                 try:
-                    # Intentar con API más reciente
+                    # Intentar con API más reciente (con log detallado)
+                    print("Método 1: Usando API con parámetros extendidos...")
                     result = supabase.storage.from_(bucket_name).upload(
                         path=file_path,
                         file=contents,
                         file_options={"content-type": imagen.content_type or "image/jpeg"}
                     )
+                    print(f"✅ Subida exitosa con método 1: {result}")
                 except Exception as upload_error:
-                    print(f"Error al subir con API reciente: {upload_error}")
+                    print(f"❌ Error con método 1: {upload_error}")
+                    print(f"Tipo de error: {type(upload_error).__name__}")
+
                     # Intentar con API anterior
-                    result = supabase.storage.from_(bucket_name).upload(file_path, contents)
+                    print("Método 2: Usando API simple...")
+                    try:
+                        result = supabase.storage.from_(bucket_name).upload(file_path, contents)
+                        print(f"✅ Subida exitosa con método 2: {result}")
+                    except Exception as e2:
+                        print(f"❌ Error con método 2: {e2}")
+                        print(f"Tipo de error: {type(e2).__name__}")
+                        raise e2  # Re-lanzar para capturar en el bloque exterior
 
                 print(f"Resultado de subida: {result}")
 
                 # Obtener URL pública con manejo para diferentes versiones de API
                 try:
                     # Intentar con método más reciente
+                    print("Obteniendo URL pública del archivo...")
                     imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+                    print(f"✅ URL obtenida con get_public_url: {imagen_url}")
                 except Exception as url_error:
-                    print(f"Error al obtener URL pública: {url_error}")
-                    # Intentar con URL firmada de larga duración
-                    url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 31536000)  # 1 año
-                    imagen_url = url_info['signedURL'] if isinstance(url_info, dict) and 'signedURL' in url_info else url_info
+                    print(f"❌ Error al obtener URL pública: {url_error}")
+                    print(f"Tipo de error: {type(url_error).__name__}")
 
-                print(f"URL de imagen generada: {imagen_url}")
+                    # Intentar con URL firmada de larga duración
+                    try:
+                        print("Intentando obtener URL firmada...")
+                        url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 31536000)  # 1 año
+
+                        if isinstance(url_info, dict) and 'signedURL' in url_info:
+                            imagen_url = url_info['signedURL']
+                        else:
+                            imagen_url = str(url_info)
+
+                        print(f"✅ URL firmada obtenida: {imagen_url}")
+                    except Exception as e2:
+                        print(f"❌ Error al obtener URL firmada: {e2}")
+                        # Construir URL manualmente como último recurso
+                        imagen_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{file_path}"
+                        print(f"⚠️ Construyendo URL manualmente: {imagen_url}")
+
+                print(f"URL de imagen final: {imagen_url}")
 
                 # Crear registro en la tabla imagenes en lugar de actualizar buses
                 imagen_data = {

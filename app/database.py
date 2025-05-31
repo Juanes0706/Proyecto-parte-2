@@ -14,10 +14,15 @@ def get_db():
 def inicializar_storage():
     """Inicializa los buckets de storage necesarios para la aplicación"""
     try:
-        print("Iniciando verificación de storage...")
+        print("🔄 Iniciando inicialización de storage...")
         supabase = get_db()
 
-        print(f"Conectado a Supabase: {supabase_url}")
+        # Verificar si la URL comienza con https://
+        if not supabase_url or not supabase_url.startswith("https://"):
+            print(f"❌ URL de Supabase inválida: {supabase_url}")
+            return False, supabase_url, supabase_key
+
+        print(f"ℹ️ Usando Supabase URL: {supabase_url}")
 
         # Verificar que el cliente se inicializó correctamente
         try:
@@ -57,11 +62,65 @@ def inicializar_storage():
                 # Crear bucket si no existe
                 try:
                     # Intentamos con opciones simplificadas
-                    supabase.storage.create_bucket(bucket["name"], options={"public": True})
+                    supabase.storage.create_bucket(bucket["name"], {"public": True})
                     print(f"✓ Bucket '{bucket['name']}' creado correctamente")
                 except Exception as create_error:
                     print(f"✗ Error al crear bucket '{bucket['name']}': {str(create_error)}")
+                    # Intentar método alternativo
+                    try:
+                        supabase.storage.create_bucket(bucket["name"])
+                        print(f"✓ Bucket creado con método alternativo")
+                    except Exception as alt_error:
+                        if "already exists" in str(alt_error).lower():
+                            print(f"✓ El bucket ya existe pero no era visible")
+                        else:
+                            print(f"✗ También falló el método alternativo: {str(alt_error)}")
 
+        # Probar funcionamiento del storage con un archivo pequeño
+        try:
+            import uuid
+            test_bucket = "buses-imagenes"
+            test_file = f"test-{uuid.uuid4()}.txt"
+            test_content = b"Prueba de storage"
+
+            # Subir archivo de prueba
+            try:
+                # Método 1
+                result = supabase.storage.from_(test_bucket).upload(
+                    path=test_file,
+                    file=test_content,
+                    file_options={"content-type": "text/plain"}
+                )
+                print(f"✓ Archivo de prueba subido correctamente")
+            except Exception as e1:
+                print(f"✗ Error con método 1: {str(e1)}")
+                # Método 2
+                try:
+                    result = supabase.storage.from_(test_bucket).upload(test_file, test_content)
+                    print(f"✓ Archivo subido con método alternativo")
+                except Exception as e2:
+                    print(f"✗ Error con método 2: {str(e2)}")
+                    raise Exception("Error al subir archivo de prueba")
+
+            # Probar obtención de URL
+            try:
+                url = supabase.storage.from_(test_bucket).get_public_url(test_file)
+                print(f"✓ URL pública obtenida")
+            except Exception as e:
+                print(f"✗ Error al obtener URL: {str(e)}")
+
+            # Limpiar archivo de prueba
+            try:
+                supabase.storage.from_(test_bucket).remove([test_file])
+            except Exception as e:
+                try:
+                    supabase.storage.from_(test_bucket).remove(test_file)
+                except Exception:
+                    pass
+        except Exception as test_error:
+            print(f"❌ Prueba de storage falló: {str(test_error)}")
+
+        print("✅ Storage inicializado correctamente")
         return True, supabase_url, supabase_key
     except Exception as e:
         print(f"Error general en inicializar_storage: {str(e)}")
