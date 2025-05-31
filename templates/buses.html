@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Buses{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg border-0 rounded-lg mb-4">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0">
+                <i class="fas fa-bus me-2"></i> Gestión de Buses
+            </h3>
+            <button onclick="mostrarFormularioNuevoBus()" class="btn btn-light">
+                <i class="fas fa-plus-circle me-1"></i> Nuevo Bus
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-filter"></i></span>
+                    <select id="filtroTipo" onchange="filtrarBuses()" class="form-select">
+                        <option value="">Todos los tipos</option>
+                        <option value="TRONCAL">Troncal</option>
+                        <option value="ZONAL">Zonal</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-toggle-on"></i></span>
+                    <select id="filtroActivo" onchange="filtrarBuses()" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="true">Activos</option>
+                        <option value="false">Inactivos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="listaBuses" class="row row-cols-1 row-cols-md-3 g-4"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="busModal" tabindex="-1" aria-labelledby="busModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="busModalLabel">Nuevo Bus</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="busForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre:</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-tag"></i></span>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label">Tipo:</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-bus"></i></span>
+                            <select class="form-select" id="tipo" name="tipo" required>
+                                <option value="TRONCAL">Troncal</option>
+                                <option value="ZONAL">Zonal</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="imagenes" class="form-label">Imágenes:</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-images"></i></span>
+                            <input type="file" class="form-control" id="imagenes" name="imagenes" multiple accept="image/*">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarBus()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Función para mostrar el formulario de nuevo bus
+    function mostrarFormularioNuevoBus() {
+        // Limpiar formulario
+        document.getElementById('busForm').reset();
+        // Mostrar modal
+        var busModal = new bootstrap.Modal(document.getElementById('busModal'));
+        busModal.show();
+    }
+
+    // Función para guardar un nuevo bus
+    async function guardarBus() {
+        const form = document.getElementById('busForm');
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('/api/buses', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                // Cerrar modal
+                bootstrap.Modal.getInstance(document.getElementById('busModal')).hide();
+                // Recargar buses
+                cargarBuses();
+                alert('Bus creado correctamente');
+            } else {
+                const error = await response.json();
+                alert('Error: ' + error.detail);
+            }
+        } catch (error) {
+            alert('Error al procesar la solicitud');
+            console.error(error);
+        }
+    }
+
+    // Función para cargar buses
+    async function cargarBuses() {
+        const tipoFiltro = document.getElementById('filtroTipo').value;
+        const activoFiltro = document.getElementById('filtroActivo').value;
+
+        let url = '/api/buses';
+        const params = [];
+
+        if (tipoFiltro) params.push(`tipo=${tipoFiltro}`);
+        if (activoFiltro) params.push(`esta_activo=${activoFiltro}`);
+
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
+
+        try {
+            const response = await fetch(url);
+            const buses = await response.json();
+
+            const listaBuses = document.getElementById('listaBuses');
+            listaBuses.innerHTML = '';
+
+            if (buses.length === 0) {
+                listaBuses.innerHTML = '<div class="col-12 text-center p-5"><h4>No se encontraron buses</h4></div>';
+                return;
+            }
+
+            buses.forEach(bus => {
+                // Determinar la imagen a mostrar o usar imagen por defecto
+                let imagenUrl = '/static/img/bus-default.jpg';
+                if (bus.imagenes && bus.imagenes.length > 0) {
+                    imagenUrl = bus.imagenes[0].url;
+                }
+
+                // Crear tarjeta para cada bus
+                const busCard = document.createElement('div');
+                busCard.className = 'col';
+                busCard.innerHTML = `
+                    <div class="card h-100 ${bus.esta_activo ? '' : 'border-danger'}">
+                        <div class="position-relative">
+                            <img src="${imagenUrl}" class="card-img-top" alt="${bus.nombre}" style="height: 180px; object-fit: cover;">
+                            <span class="position-absolute top-0 end-0 badge ${bus.tipo === 'TRONCAL' ? 'bg-danger' : 'bg-success'} m-2">
+                                ${bus.tipo}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">${bus.nombre}</h5>
+                            <p class="card-text">
+                                <small class="text-muted">Estado: 
+                                    <span class="badge ${bus.esta_activo ? 'bg-success' : 'bg-danger'}">
+                                        ${bus.esta_activo ? 'Activo' : 'Inactivo'}
+                                    </span>
+                                </small>
+                            </p>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarBus('${bus.id}')">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarBus('${bus.id}')">
+                                <i class="fas fa-trash-alt"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listaBuses.appendChild(busCard);
+            });
+        } catch (error) {
+            console.error('Error al cargar buses:', error);
+            document.getElementById('listaBuses').innerHTML = 
+                '<div class="col-12 text-center p-5"><h4>Error al cargar buses</h4></div>';
+        }
+    }
+
+    // Función para filtrar buses
+    function filtrarBuses() {
+        cargarBuses();
+    }
+
+    // Función para editar un bus
+    function editarBus(id) {
+        window.location.href = `/buses/editar/${id}`;
+    }
+
+    // Función para eliminar un bus
+    async function eliminarBus(id) {
+        if (confirm('¿Está seguro de eliminar este bus?')) {
+            try {
+                const response = await fetch(`/api/buses/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Bus eliminado correctamente');
+                    cargarBuses();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Error al procesar la solicitud');
+                console.error(error);
+            }
+        }
+    }
+
+    // Cargar buses al cargar la página
+    document.addEventListener('DOMContentLoaded', cargarBuses);
+</script>
+{% endblock %}
+{% endblock %}
