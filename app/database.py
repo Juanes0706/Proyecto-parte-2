@@ -55,12 +55,7 @@ def inicializar_storage():
                 except Exception as create_error:
                     print(f"✗ Error al crear bucket '{bucket['name']}': {str(create_error)}")
 
-        return True
+        return True, supabase_url, supabase_key
     except Exception as e:
         print(f"Error general en inicializar_storage: {str(e)}")
-        return False
-
-        return True
-    except Exception as e:
-        logging.error(f"Error inicializando storage: {str(e)}")
-        return False
+        return False, None, None
