@@ -38,11 +38,20 @@ async def crear_bus(
         print(f"Creando bus con datos: {bus_data}")
 
         # Insertar el bus y dejar que Supabase genere el ID automáticamente
-        result, error = supabase.table("buses").insert(bus_data).execute()
+        try:
+            result, error = supabase.table("buses").insert(bus_data).execute()
 
-        if error:
-            print(f"Error al insertar bus: {error}")
-            raise HTTPException(status_code=400, detail=str(error))
+            if error:
+                print(f"Error al insertar bus: {error}")
+                raise HTTPException(status_code=400, detail=str(error))
+
+            # Verificar que result tiene la estructura esperada
+            if not result or len(result) < 2 or not result[1] or not result[1][0] or "id" not in result[1][0]:
+                print(f"Error: La respuesta de Supabase no tiene el formato esperado: {result}")
+                raise HTTPException(status_code=500, detail="Error al obtener ID del bus creado")
+        except Exception as e:
+            print(f"Error al ejecutar insert: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error al crear bus: {str(e)}")
 
         # Obtener el ID numérico generado por la base de datos
         bus_id = result[1][0]["id"]
