@@ -3,10 +3,31 @@ from ..database import get_db
 from datetime import datetime
 from fastapi.templating import Jinja2Templates
 from typing import List, Optional
+from pydantic import BaseModel
 import uuid
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+class BusCreate(BaseModel):
+    tipo: str
+    esta_activo: bool = True
+
+@router.post("/api/buses")
+async def crear_bus(
+    bus: BusCreate,
+    supabase=Depends(get_db)
+):
+    data = {
+        "id": str(uuid.uuid4()),
+        "tipo": bus.tipo,
+        "esta_activo": bus.esta_activo,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    result, error = supabase.table("buses").insert(data).execute()
+    if error:
+        raise HTTPException(status_code=400, detail=str(error))
+    return {"message": "Bus creado correctamente", "bus_id": data["id"]}
 
 @router.get("/buses", include_in_schema=False)
 async def buses_page(request: Request):
