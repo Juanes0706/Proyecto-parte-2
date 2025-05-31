@@ -18,7 +18,7 @@ app = FastAPI(title="Sistema de Gestión de Buses")
 # Inicializar storage con manejo de errores mejorado
 try:
     logger.info("🔄 Iniciando inicialización de storage...")
-    storage_ok = inicializar_storage()
+    storage_ok, supabase_url, supabase_key = inicializar_storage()
     if storage_ok:
         logger.info("✅ Storage inicializado correctamente")
     else:

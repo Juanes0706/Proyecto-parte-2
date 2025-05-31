@@ -39,9 +39,9 @@ async def crear_estacion(
     estacion_id = data[1][0]["id"]
     imagenes_urls = []
 
-            bucket_name = "estaciones-imagenes"
+    bucket_name = "estaciones-imagenes"
 
-            for imagen in imagenes:
+    for imagen in imagenes:
         contents = await imagen.read()
         # Usar una ruta más simple dentro del bucket específico
         file_path = f"{estacion_id}/{imagen.filename}"
@@ -138,9 +138,9 @@ async def actualizar_estacion(
     # Procesar nuevas imágenes si se proporcionaron
     if imagenes:
         imagenes_urls = []
-                    bucket_name = "estaciones-imagenes"
+        bucket_name = "estaciones-imagenes"
 
-                    for imagen in imagenes:
+        for imagen in imagenes:
             contents = await imagen.read()
             # Usar una ruta más simple dentro del bucket específico
             file_path = f"{estacion_id}/{imagen.filename}"
