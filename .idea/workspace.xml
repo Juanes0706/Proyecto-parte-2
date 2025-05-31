@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="07c207c7-e01f-47d9-8ff1-94d32fac07a7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/actualizar_tabla_imagenes.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/utils/id_converter.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/routers/buses.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/routers/buses.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +58,7 @@
       <option name="presentableId" value="Default" />
       <updated>1748641100327</updated>
       <workItem from="1748641101157" duration="24186000" />
-      <workItem from="1748705741999" duration="2458000" />
+      <workItem from="1748705741999" duration="3218000" />
     </task>
     <servers />
   </component>
