@@ -1,38 +1,71 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, File, UploadFile, Form
 from ..database import get_db
 from datetime import datetime
 from fastapi.templating import Jinja2Templates
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
+import os
+import shutil
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-class BusCreate(BaseModel):
-    tipo: str
-    esta_activo: bool = True
-
 @router.post("/api/buses")
 async def crear_bus(
-    bus: BusCreate,
+    tipo: str = Form(...),
+    imagen: UploadFile = File(None),
     supabase=Depends(get_db)
 ):
+    bus_id = str(uuid.uuid4())
+    image_path = None
+
+    if imagen:
+        ext = os.path.splitext(imagen.filename)[1]
+        image_filename = f"{bus_id}{ext}"
+        image_dir = "static/img"
+        os.makedirs(image_dir, exist_ok=True)
+        image_path = os.path.join(image_dir, image_filename)
+        with open(image_path, "wb") as buffer:
+            shutil.copyfileobj(imagen.file, buffer)
+
     data = {
-        "id": str(uuid.uuid4()),
-        "tipo": bus.tipo,
-        "esta_activo": bus.esta_activo,
-        "created_at": datetime.utcnow().isoformat()
+        "id": bus_id,
+        "tipo": tipo,
+        "esta_activo": True,
+        "created_at": datetime.utcnow().isoformat(),
+        "imagen_url": image_path if image_path else None
     }
     result, error = supabase.table("buses").insert(data).execute()
     if error:
         raise HTTPException(status_code=400, detail=str(error))
-    return {"message": "Bus creado correctamente", "bus_id": data["id"]}
+    return {"message": "Bus creado correctamente", "bus_id": bus_id}
 
 @router.get("/buses", include_in_schema=False)
 async def buses_page(request: Request):
     return templates.TemplateResponse(
         "buses.html",
+        {"request": request}
+    )
+
+@router.get("/buses/create", include_in_schema=False)
+async def buses_create_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_create.html",
+        {"request": request}
+    )
+
+@router.get("/buses/edit", include_in_schema=False)
+async def buses_edit_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_edit.html",
+        {"request": request}
+    )
+
+@router.get("/buses/delete", include_in_schema=False)
+async def buses_delete_page(request: Request):
+    return templates.TemplateResponse(
+        "buses_delete.html",
         {"request": request}
     )
 

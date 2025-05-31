@@ -9,8 +9,17 @@
 <body>
     <div class="container mt-4">
         <h1>Crear Bus</h1>
-        <p>Aquí puede crear un nuevo bus.</p>
-        <!-- Formulario para crear bus aquí -->
+        <form action="/api/buses" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="tipo" class="form-label">Tipo de Bus</label>
+                <input type="text" class="form-control" id="tipo" name="tipo" required />
+            </div>
+            <div class="mb-3">
+                <label for="imagen" class="form-label">Imagen del Bus</label>
+                <input type="file" class="form-control" id="imagen" name="imagen" accept="image/*" />
+            </div>
+            <button type="submit" class="btn btn-primary">Crear Bus</button>
+        </form>
     </div>
 </body>
 </html>
