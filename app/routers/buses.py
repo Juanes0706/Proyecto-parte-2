@@ -367,12 +367,30 @@ async def subir_imagen_bus(
 
         # Subir imagen a Supabase Storage
         try:
-            # Intentar subir la imagen al bucket específico
-            supabase.storage.from_(bucket_name).upload(file_path, contents)
+            # Intentar subir la imagen al bucket específico con la API actualizada
+            try:
+                # Intentar con el método más reciente
+                supabase.storage.from_(bucket_name).upload(
+                    path=file_path,
+                    file=contents,
+                    file_options={"content-type": imagen.content_type or "image/jpeg"}
+                )
+            except Exception as upload_error:
+                print(f"Error al subir con método estándar: {upload_error}")
+                # Intentar con método alternativo (versiones anteriores)
+                supabase.storage.from_(bucket_name).upload(file_path, contents)
+
             print(f"Imagen subida correctamente a '{bucket_name}/{file_path}'")
 
             # Obtener URL pública del bucket específico
-            url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+            try:
+                # Intentar con el método más reciente
+                url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+            except Exception as url_error:
+                print(f"Error al obtener URL pública: {url_error}")
+                # Intentar con método alternativo (URL firmada con larga duración)
+                url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 31536000)  # 1 año
+                url = url_info['signedURL'] if isinstance(url_info, dict) and 'signedURL' in url_info else url_info
 
             # Crear un registro en la tabla imagenes en lugar de actualizar buses
             imagen_data = {
@@ -506,7 +524,16 @@ async def eliminar_bus(
                     path_parts = imagen["url"].split("/")
                     file_name = path_parts[-1]
                     # La ruta ahora es solo bus_id/nombre_archivo
-                    supabase.storage.from_(bucket_name).remove([f"{bus_id_int}/{file_name}"])
+                    try:
+                        # Intentar con el método estándar
+                        supabase.storage.from_(bucket_name).remove([f"{bus_id_int}/{file_name}"])
+                    except Exception as remove_error:
+                        print(f"Error al eliminar con método estándar: {remove_error}")
+                        # Intentar con método alternativo si está disponible
+                        try:
+                            supabase.storage.from_(bucket_name).remove(f"{bus_id_int}/{file_name}")
+                        except Exception as alt_error:
+                            print(f"Error también con método alternativo: {alt_error}")
                 except Exception as e:
                     print(f"Error eliminando archivo de {bucket_name}: {e}")
 
