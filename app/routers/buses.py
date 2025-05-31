@@ -8,8 +8,6 @@ import uuid
 import os
 import shutil
 import json
-# Importar nuestra utilidad para convertir IDs
-from ..utils.id_converter import parse_id, is_valid_id
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -22,48 +20,40 @@ async def crear_bus(
     imagen: UploadFile = File(None),
     supabase=Depends(get_db)
 ):
-    """Crea un nuevo bus con un enfoque simplificado para resolver errores"""
+    """Crea un nuevo bus utilizando la tabla imagenes para las fotos"""
     try:
-        # Convertimos a booleano
+        # Generar ID único para el bus
+        bus_id = str(uuid.uuid4())
+        # Convertir string a booleano
         esta_activo_bool = esta_activo.lower() == "true"
 
-        # Crear datos básicos del bus SIN ID - será generado por la secuencia en Supabase
+        # Datos básicos del bus (sin imagen_url)
         bus_data = {
+            "id": bus_id,
             "nombre": nombre,
             "tipo": tipo,
             "esta_activo": esta_activo_bool,
-            "imagen_url": None  # Establecer explícitamente como NULL
+            "created_at": datetime.utcnow().isoformat()
         }
 
         print(f"Creando bus con datos: {bus_data}")
 
-        # Insertar el bus y dejar que Supabase genere el ID automáticamente
-        try:
-            result, error = supabase.table("buses").insert(bus_data).execute()
+        # Insertar el bus
+        result, error = supabase.table("buses").insert(bus_data).execute()
 
-            if error:
-                print(f"Error al insertar bus: {error}")
-                raise HTTPException(status_code=400, detail=str(error))
+        if error:
+            print(f"Error al insertar bus: {error}")
+            raise HTTPException(status_code=400, detail=str(error))
 
-            # Verificar que result tiene la estructura esperada
-            if not result or len(result) < 2 or not result[1] or not result[1][0] or "id" not in result[1][0]:
-                print(f"Error: La respuesta de Supabase no tiene el formato esperado: {result}")
-                raise HTTPException(status_code=500, detail="Error al obtener ID del bus creado")
-        except Exception as e:
-            print(f"Error al ejecutar insert: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Error al crear bus: {str(e)}")
-
-        # Obtener el ID numérico generado por la base de datos
-        bus_id = result[1][0]["id"]
-        print(f"Bus creado con ID: {bus_id}")
-
-        # Si el bus se creó correctamente y hay imagen, procesarla después
+        # Si el bus se creó correctamente y hay imagen, procesarla
+        imagen_url = None
         if imagen:
             try:
                 print(f"Procesando imagen: {imagen.filename}")
-                # Verificar si la imagen tiene contenido
+                # Leer contenido de la imagen
                 contents = await imagen.read()
                 print(f"Tamaño de la imagen: {len(contents)} bytes")
+
                 bucket_name = "buses-imagenes"
 
                 # Intentar obtener o crear el bucket
@@ -75,103 +65,45 @@ async def crear_bus(
                     try:
                         supabase.storage.create_bucket(bucket_name, options={"public": True})
                         print(f"Bucket {bucket_name} creado exitosamente")
-                    except Exception as e2:
-                        print(f"Error al crear bucket {bucket_name}: {str(e2)}")
+                    except Exception as e:
+                        print(f"Error al crear bucket {bucket_name}: {str(e)}")
 
-                # Simplificar la subida de imágenes y usar la tabla de imagenes
+                # Generar nombre de archivo único
                 extension = os.path.splitext(imagen.filename)[1] if '.' in imagen.filename else '.jpg'
                 file_name = f"{uuid.uuid4()}{extension}"
-
-                # Usar ruta con ID del bus para organizar imágenes
                 file_path = f"{bus_id}/{file_name}"
-                print(f"Intentando subir archivo a {bucket_name}/{file_path}")
-            except Exception as e:
-                print(f"Error al procesar imagen: {str(e)}")
-                # Continuar con el flujo normal
 
-            try:
-                # Subir la imagen al bucket con manejo para diferentes versiones de API
-                print(f"Intentando subir imagen al bucket '{bucket_name}', ruta '{file_path}'")
-                print(f"Tamaño de contenido: {len(contents)} bytes")
-                print(f"Tipo de contenido: {imagen.content_type}")
+                print(f"Subiendo archivo a {bucket_name}/{file_path}")
 
-                # Forzar un pequeño retraso antes de la subida
-                import time
-                time.sleep(1)
+                # Subir imagen al bucket
+                supabase.storage.from_(bucket_name).upload(file_path, contents)
+                imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+                print(f"URL de imagen generada: {imagen_url}")
 
-                try:
-                    # Intentar con API más reciente (con log detallado)
-                    print("Método 1: Usando API con parámetros extendidos...")
-                    result = supabase.storage.from_(bucket_name).upload(
-                        path=file_path,
-                        file=contents,
-                        file_options={"content-type": imagen.content_type or "image/jpeg"}
-                    )
-                    print(f"✅ Subida exitosa con método 1: {result}")
-                except Exception as upload_error:
-                    print(f"❌ Error con método 1: {upload_error}")
-                    print(f"Tipo de error: {type(upload_error).__name__}")
-
-                    # Intentar con API anterior
-                    print("Método 2: Usando API simple...")
-                    try:
-                        result = supabase.storage.from_(bucket_name).upload(file_path, contents)
-                        print(f"✅ Subida exitosa con método 2: {result}")
-                    except Exception as e2:
-                        print(f"❌ Error con método 2: {e2}")
-                        print(f"Tipo de error: {type(e2).__name__}")
-                        raise e2  # Re-lanzar para capturar en el bloque exterior
-
-                print(f"Resultado de subida: {result}")
-
-                # Obtener URL pública con manejo para diferentes versiones de API
-                try:
-                    # Intentar con método más reciente
-                    print("Obteniendo URL pública del archivo...")
-                    imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
-                    print(f"✅ URL obtenida con get_public_url: {imagen_url}")
-                except Exception as url_error:
-                    print(f"❌ Error al obtener URL pública: {url_error}")
-                    print(f"Tipo de error: {type(url_error).__name__}")
-
-                    # Intentar con URL firmada de larga duración
-                    try:
-                        print("Intentando obtener URL firmada...")
-                        url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 31536000)  # 1 año
-
-                        if isinstance(url_info, dict) and 'signedURL' in url_info:
-                            imagen_url = url_info['signedURL']
-                        else:
-                            imagen_url = str(url_info)
-
-                        print(f"✅ URL firmada obtenida: {imagen_url}")
-                    except Exception as e2:
-                        print(f"❌ Error al obtener URL firmada: {e2}")
-                        # Construir URL manualmente como último recurso
-                        imagen_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{file_path}"
-                        print(f"⚠️ Construyendo URL manualmente: {imagen_url}")
-
-                print(f"URL de imagen final: {imagen_url}")
-
-                # Crear registro en la tabla imagenes en lugar de actualizar buses
+                # Crear registro en la tabla imagenes
                 imagen_data = {
                     "url": imagen_url,
-                    "bus_id": bus_id,  # Asociar con el bus
+                    "bus_id": bus_id,
                     "created_at": datetime.utcnow().isoformat()
                 }
 
-                print(f"Guardando imagen en la tabla imagenes: {imagen_data}")
+                # Insertar en tabla imagenes
                 imagen_result, imagen_error = supabase.table("imagenes").insert(imagen_data).execute()
 
                 if imagen_error:
-                    print(f"Error al guardar en tabla imagenes: {imagen_error}")
-                    # No interrumpir la respuesta, el bus y la imagen ya existen
+                    print(f"Error al insertar en tabla imagenes: {imagen_error}")
+                    # No interrumpir la respuesta, el bus ya se creó
+
             except Exception as img_error:
                 print(f"Error procesando imagen: {img_error}")
                 # Continuar sin imagen
 
-        # Respuesta básica si no hay imagen o hubo error al procesarla
-        return {"message": "Bus creado correctamente", "bus_id": bus_id}
+        # Respuesta con o sin imagen
+        if imagen_url:
+            return {"message": "Bus creado con imagen", "bus_id": bus_id, "imagen_url": imagen_url}
+        else:
+            return {"message": "Bus creado correctamente", "bus_id": bus_id}
+
     except Exception as e:
         print(f"Error general al crear bus: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -196,7 +128,7 @@ async def buses_crear_page(request: Request):
         "buses_create.html",
         {"request": request}
     )
-    
+
 @router.get("/buses/edit", include_in_schema=False)
 async def buses_edit_page(request: Request):
     return templates.TemplateResponse(
@@ -225,35 +157,14 @@ async def buses_eliminar_page(request: Request):
         {"request": request}
     )
 
-@router.get("/buses/edit", include_in_schema=False)
-async def buses_edit_page(request: Request):
-    return templates.TemplateResponse(
-        "buses_edit.html",
-        {"request": request}
-    )
-
-@router.get("/buses/delete", include_in_schema=False)
-async def buses_delete_page(request: Request):
-    return templates.TemplateResponse(
-        "buses_delete.html",
-        {"request": request}
-    )
-
 @router.get("/api/buses")
 async def listar_buses(
         tipo: Optional[str] = None,
         esta_activo: Optional[bool] = None,
         supabase=Depends(get_db)
 ):
-    # Seleccionamos todos los buses con sus imágenes asociadas
-    query = supabase.table("buses").select("*, imagenes(*)")
-
-    # Si hay created_at en la tabla, ordenamos por él
-    try:
-        query = query.order("created_at")
-    except Exception:
-        # Si hay un error, probablemente created_at no es ordenable o no existe
-        pass
+    # Seleccionar buses con sus imágenes asociadas
+    query = supabase.table("buses").select("*, imagenes(*)").order("created_at")
 
     if tipo:
         query = query.eq("tipo", tipo)
@@ -275,7 +186,7 @@ async def listar_buses(
             else:
                 bus["imagen_url"] = None
         except Exception as e:
-            print(f"Error al procesar imágenes en listar_buses: {e}")
+            print(f"Error al procesar imágenes: {e}")
             bus["imagen_url"] = None
 
     return buses
@@ -286,33 +197,11 @@ async def asociar_estacion(
         estacion_id: str,
         supabase=Depends(get_db)
 ):
-    # Convertir bus_id usando parse_id
-    bus_id_int = parse_id(bus_id)
-    if bus_id_int is None:
-        raise HTTPException(status_code=400, detail="ID de bus inválido")
-
-    # Comprobar si estacion_id es un UUID y convertirlo a bigint
-    if '-' in estacion_id:
-        try:
-            # Convertir el UUID a un entero (bigint)
-            import uuid
-            estacion_id_int = int(uuid.UUID(estacion_id).int & (1<<63)-1)
-            # La tabla bus_estacion tiene: bus_id, estacion_id, created_at (automático)
-            data = {
-                "bus_id": bus_id_int,
-                "estacion_id": estacion_id_int  # Usar el valor convertido
-            }
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="ID de estación inválido")
-    else:
-        # Si no parece un UUID, intentar usarlo como está (podría ser ya un entero)
-        try:
-            data = {
-                "bus_id": bus_id_int,
-                "estacion_id": int(estacion_id)  # Asegurar que sea un entero
-            }
-        except ValueError:
-            raise HTTPException(status_code=400, detail="ID de estación debe ser un número")
+    # La tabla bus_estacion tiene: bus_id, estacion_id, created_at (automático)
+    data = {
+        "bus_id": bus_id,
+        "estacion_id": estacion_id
+    }
 
     try:
         result, error = (
@@ -336,35 +225,13 @@ async def desasociar_estacion(
         estacion_id: str,
         supabase=Depends(get_db)
 ):
-    # Convertir bus_id usando parse_id
-    bus_id_int = parse_id(bus_id)
-    if bus_id_int is None:
-        raise HTTPException(status_code=400, detail="ID de bus inválido")
-
     # Eliminamos la relación entre el bus y la estación
     try:
-        # Comprobar si estacion_id es un UUID y convertirlo a bigint
-        if '-' in estacion_id:
-            try:
-                # Convertir el UUID a un entero (bigint)
-                import uuid
-                estacion_id_int = int(uuid.UUID(estacion_id).int & (1<<63)-1)
-                # Usar el valor convertido
-                estacion_id_param = estacion_id_int
-            except (ValueError, TypeError):
-                raise HTTPException(status_code=400, detail="ID de estación inválido")
-        else:
-            # Si no parece un UUID, intentar usarlo como está (podría ser ya un entero)
-            try:
-                estacion_id_param = int(estacion_id)  # Asegurar que sea un entero
-            except ValueError:
-                raise HTTPException(status_code=400, detail="ID de estación debe ser un número")
-
         result, error = (
             supabase.table("bus_estacion")
             .delete()
-            .eq("bus_id", bus_id_int)
-            .eq("estacion_id", estacion_id_param)
+            .eq("bus_id", bus_id)
+            .eq("estacion_id", estacion_id)
             .execute()
         )
 
@@ -384,16 +251,11 @@ async def subir_imagen_bus(
 ):
     """Sube una imagen para un bus existente"""
     try:
-        # Convertir bus_id usando parse_id
-        bus_id_int = parse_id(bus_id)
-        if bus_id_int is None:
-            raise HTTPException(status_code=400, detail="ID de bus inválido")
-
         # Verificar que el bus existe
         bus_data, bus_error = (
             supabase.table("buses")
             .select("id")
-            .eq("id", bus_id_int)
+            .eq("id", bus_id)
             .execute()
         )
 
@@ -409,9 +271,7 @@ async def subir_imagen_bus(
         # Generar un nombre único para la imagen
         extension = os.path.splitext(imagen.filename)[1]
         nombre_archivo = f"{uuid.uuid4()}{extension}"
-        # La ruta ahora solo necesita el ID del bus y nombre del archivo
-        # ya que estamos usando un bucket específico para buses
-        file_path = f"{bus_id_int}/{nombre_archivo}"
+        file_path = f"{bus_id}/{nombre_archivo}"
 
         bucket_name = "buses-imagenes"
 
@@ -433,35 +293,17 @@ async def subir_imagen_bus(
 
         # Subir imagen a Supabase Storage
         try:
-            # Intentar subir la imagen al bucket específico con la API actualizada
-            try:
-                # Intentar con el método más reciente
-                supabase.storage.from_(bucket_name).upload(
-                    path=file_path,
-                    file=contents,
-                    file_options={"content-type": imagen.content_type or "image/jpeg"}
-                )
-            except Exception as upload_error:
-                print(f"Error al subir con método estándar: {upload_error}")
-                # Intentar con método alternativo (versiones anteriores)
-                supabase.storage.from_(bucket_name).upload(file_path, contents)
-
+            # Subir la imagen al bucket específico
+            supabase.storage.from_(bucket_name).upload(file_path, contents)
             print(f"Imagen subida correctamente a '{bucket_name}/{file_path}'")
 
             # Obtener URL pública del bucket específico
-            try:
-                # Intentar con el método más reciente
-                url = supabase.storage.from_(bucket_name).get_public_url(file_path)
-            except Exception as url_error:
-                print(f"Error al obtener URL pública: {url_error}")
-                # Intentar con método alternativo (URL firmada con larga duración)
-                url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 31536000)  # 1 año
-                url = url_info['signedURL'] if isinstance(url_info, dict) and 'signedURL' in url_info else url_info
+            url = supabase.storage.from_(bucket_name).get_public_url(file_path)
 
-            # Crear un registro en la tabla imagenes en lugar de actualizar buses
+            # Crear registro en la tabla imagenes
             imagen_data = {
                 "url": url,
-                "bus_id": bus_id_int,
+                "bus_id": bus_id,
                 "created_at": datetime.utcnow().isoformat()
             }
 
@@ -478,6 +320,92 @@ async def subir_imagen_bus(
             raise HTTPException(status_code=500, detail=f"Error al subir imagen: {str(storage_error)}")
     except Exception as e:
         print(f"Error general al subir imagen: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/buses/{bus_id}")
+async def obtener_bus(
+        bus_id: str,
+        supabase=Depends(get_db)
+):
+    """Obtiene los detalles de un bus específico con sus imágenes"""
+    try:
+        # Seleccionar bus con sus imágenes asociadas
+        data, error = (
+            supabase.table("buses")
+            .select("*, imagenes(*)")
+            .eq("id", bus_id)
+            .execute()
+        )
+
+        if error:
+            raise HTTPException(status_code=400, detail=str(error))
+
+        if not data[1]:
+            raise HTTPException(status_code=404, detail="Bus no encontrado")
+
+        # Añadir imagen_url como primera imagen para compatibilidad
+        bus = data[1][0]
+        try:
+            if "imagenes" in bus and bus["imagenes"]:
+                bus["imagen_url"] = bus["imagenes"][0]["url"]
+            else:
+                bus["imagen_url"] = None
+        except Exception as e:
+            print(f"Error al procesar imágenes: {e}")
+            bus["imagen_url"] = None
+
+        return bus
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/api/buses/{bus_id}")
+async def eliminar_bus(
+        bus_id: str,
+        supabase=Depends(get_db)
+):
+    """Elimina un bus y todos sus recursos asociados"""
+    try:
+        # Primero eliminar relaciones con estaciones
+        supabase.table("bus_estacion").delete().eq("bus_id", bus_id).execute()
+
+        # Obtener y eliminar imágenes asociadas al bus
+        imagenes, img_error = (
+            supabase.table("imagenes")
+            .select("*")
+            .eq("bus_id", bus_id)
+            .execute()
+        )
+
+        if not img_error and imagenes[1]:
+            # Eliminar archivos del bucket específico de buses
+            bucket_name = "buses-imagenes"
+            for imagen in imagenes[1]:
+                try:
+                    # Extraer solo el nombre del archivo de la URL
+                    path_parts = imagen["url"].split("/")
+                    file_name = path_parts[-1]
+                    # La ruta ahora es solo bus_id/nombre_archivo
+                    supabase.storage.from_(bucket_name).remove([f"{bus_id}/{file_name}"])
+                except Exception as e:
+                    print(f"Error eliminando archivo de {bucket_name}: {e}")
+
+        # Eliminar registros de imágenes
+        supabase.table("imagenes").delete().eq("bus_id", bus_id).execute()
+
+        # Finalmente eliminar el bus
+        data, error = supabase.table("buses").delete().eq("id", bus_id).execute()
+
+        if error:
+            raise HTTPException(status_code=400, detail=str(error))
+
+        if not data[1]:
+            raise HTTPException(status_code=404, detail="Bus no encontrado")
+
+        return {"message": "Bus eliminado correctamente"}
+    except Exception as e:
+        print(f"Error al eliminar bus: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -508,114 +436,5 @@ async def verificar_tablas(
         return {
             "error": str(e),
             "mensaje": "No se pudo obtener información de las tablas",
-            "recomendación": "Ejecuta el script scripts/inicializar_tablas.py para verificar la estructura"
+            "recomendación": "Ejecuta el script migrations/add_imagenes_table.sql para verificar la estructura"
         }
-
-@router.get("/api/buses/{bus_id}")
-async def obtener_bus(
-        bus_id: str,
-        supabase=Depends(get_db)
-):
-    """Obtiene los detalles de un bus específico"""
-    try:
-        # Convertir bus_id usando parse_id
-        bus_id_int = parse_id(bus_id)
-        if bus_id_int is None:
-            raise HTTPException(status_code=400, detail="ID de bus inválido")
-
-        # Seleccionar el bus y sus imágenes asociadas de la tabla imagenes
-        data, error = (
-            supabase.table("buses")
-            .select("*, imagenes(*)")
-            .eq("id", bus_id_int)
-            .execute()
-        )
-
-        if error:
-            raise HTTPException(status_code=400, detail=str(error))
-
-        if not data[1]:
-            raise HTTPException(status_code=404, detail="Bus no encontrado")
-
-        # Extraer datos del bus y procesar imágenes desde la relación
-        bus = data[1][0]
-
-        # Añadir URL de la primera imagen como imagen_url para mantener compatibilidad
-        try:
-            # Verificar si hay imágenes asociadas
-            if "imagenes" in bus and bus["imagenes"]:
-                # Usar la primera imagen como principal
-                primera_imagen = bus["imagenes"][0]
-                bus["imagen_url"] = primera_imagen["url"]
-            else:
-                bus["imagen_url"] = None
-        except Exception as e:
-            print(f"Error al procesar imágenes para el bus: {e}")
-            bus["imagen_url"] = None
-
-        return bus
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/api/buses/{bus_id}")
-async def eliminar_bus(
-        bus_id: str,
-        supabase=Depends(get_db)
-):
-    """Elimina un bus y todos sus recursos asociados"""
-    try:
-        # Convertir bus_id usando parse_id
-        bus_id_int = parse_id(bus_id)
-        if bus_id_int is None:
-            raise HTTPException(status_code=400, detail="ID de bus inválido")
-
-        # Primero eliminar relaciones con estaciones
-        supabase.table("bus_estacion").delete().eq("bus_id", bus_id_int).execute()
-
-        # Obtener y eliminar imágenes asociadas al bus
-        imagenes, img_error = (
-            supabase.table("imagenes")
-            .select("*")
-            .eq("bus_id", bus_id_int)
-            .execute()
-        )
-
-        if not img_error and imagenes[1]:
-            # Eliminar archivos del bucket específico de buses
-            bucket_name = "buses-imagenes"
-            for imagen in imagenes[1]:
-                try:
-                    # Extraer solo el nombre del archivo de la URL
-                    path_parts = imagen["url"].split("/")
-                    file_name = path_parts[-1]
-                    # La ruta ahora es solo bus_id/nombre_archivo
-                    try:
-                        # Intentar con el método estándar
-                        supabase.storage.from_(bucket_name).remove([f"{bus_id_int}/{file_name}"])
-                    except Exception as remove_error:
-                        print(f"Error al eliminar con método estándar: {remove_error}")
-                        # Intentar con método alternativo si está disponible
-                        try:
-                            supabase.storage.from_(bucket_name).remove(f"{bus_id_int}/{file_name}")
-                        except Exception as alt_error:
-                            print(f"Error también con método alternativo: {alt_error}")
-                except Exception as e:
-                    print(f"Error eliminando archivo de {bucket_name}: {e}")
-
-        # Eliminar registros de imágenes
-        supabase.table("imagenes").delete().eq("bus_id", bus_id_int).execute()
-
-        # Finalmente eliminar el bus
-        data, error = supabase.table("buses").delete().eq("id", bus_id_int).execute()
-
-        if error:
-            raise HTTPException(status_code=400, detail=str(error))
-
-        if not data[1]:
-            raise HTTPException(status_code=404, detail="Bus no encontrado")
-
-        return {"message": "Bus eliminado correctamente"}
-    except Exception as e:
-        print(f"Error al eliminar bus: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
