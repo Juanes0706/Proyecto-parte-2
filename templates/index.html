@@ -1,5 +1,92 @@
 {% extends "base.html" %}
+{% extends "base.html" %}
 
+{% block title %}Inicio - Sistema de Gestión de Buses{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-body text-center p-5">
+                <h1 class="display-4 mb-4 fw-bold">
+                    <i class="fas fa-bus text-primary me-2"></i>
+                    Sistema de Gestión de Buses
+                </h1>
+                <p class="lead mb-5">
+                    Bienvenido a la plataforma integral para la gestión y monitoreo de buses, estaciones y rutas.
+                    Esta herramienta le permite administrar toda la operación de su servicio de transporte de manera eficiente.
+                </p>
+
+                <div class="row mt-5">
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm feature-card">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-bus fa-3x text-primary mb-3 feature-icon"></i>
+                                <h3 class="card-title h4 mb-3">Gestión de Buses</h3>
+                                <p class="card-text text-muted">Administre su flota de buses, registre nuevas unidades, actualice información y realice seguimiento en tiempo real.</p>
+                                <a href="/buses" class="btn btn-primary mt-3">
+                                    <i class="fas fa-arrow-right me-1"></i> Gestionar Buses
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm feature-card">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-building fa-3x text-success mb-3 feature-icon"></i>
+                                <h3 class="card-title h4 mb-3">Gestión de Estaciones</h3>
+                                <p class="card-text text-muted">Configure las estaciones de su red, controle su estado operativo y gestione la información para los usuarios.</p>
+                                <a href="/estaciones" class="btn btn-success mt-3">
+                                    <i class="fas fa-arrow-right me-1"></i> Gestionar Estaciones
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm feature-card">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-route fa-3x text-info mb-3 feature-icon"></i>
+                                <h3 class="card-title h4 mb-3">Control de Rutas</h3>
+                                <p class="card-text text-muted">Planifique y optimice las rutas, asigne buses a estaciones específicas y monitoree el desempeño operativo.</p>
+                                <a href="/rutas/ver" class="btn btn-info text-white mt-3">
+                                    <i class="fas fa-arrow-right me-1"></i> Ver Rutas
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 border-0 shadow-sm feature-card">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-chart-line fa-3x text-danger mb-3 feature-icon"></i>
+                                <h3 class="card-title h4 mb-3">Estadísticas y Reportes</h3>
+                                <p class="card-text text-muted">Acceda a informes detallados y estadísticas sobre el rendimiento de su flota y la utilización de las estaciones.</p>
+                                <a href="#" class="btn btn-danger mt-3">
+                                    <i class="fas fa-chart-bar me-1"></i> Ver Estadísticas
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 border-0 shadow-sm feature-card">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-cog fa-3x text-secondary mb-3 feature-icon"></i>
+                                <h3 class="card-title h4 mb-3">Configuración del Sistema</h3>
+                                <p class="card-text text-muted">Personalice los parámetros del sistema según sus necesidades operativas y de gestión.</p>
+                                <a href="#" class="btn btn-secondary mt-3">
+                                    <i class="fas fa-cogs me-1"></i> Configurar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-10">
