@@ -58,7 +58,13 @@ def listar_buckets():
 
         print("\n==== Buckets disponibles ====")
         for bucket in buckets:
-            print(f"- {bucket.name}")
+            try:
+                # Intenta acceder como atributo (versión nueva)
+                bucket_name = bucket.name if hasattr(bucket, 'name') else str(bucket)
+                print(f"- {bucket_name}")
+            except Exception as attr_err:
+                # Si falla, muestra el objeto completo
+                print(f"- {str(bucket)}")
 
         # Intentar crear un bucket de prueba
         bucket_name = "debug-test-bucket"
@@ -77,15 +83,41 @@ def listar_buckets():
             file_path = "test.txt"
 
             print(f"\nSubiendo archivo al bucket '{bucket_name}'...")
-            result = supabase.storage.from_(bucket_name).upload(file_path, file_content)
+            # Intenta diferentes métodos de upload según la versión de API
+            try:
+                # Método para versiones más recientes
+                result = supabase.storage.from_(bucket_name).upload(
+                    path=file_path,
+                    file=file_content,
+                    file_options={"content-type": "text/plain"}
+                )
+            except Exception as e1:
+                print(f"Método 1 falló: {e1}")
+                # Método para versiones anteriores
+                result = supabase.storage.from_(bucket_name).upload(file_path, file_content)
+
             print(f"✅ Archivo subido: {result}")
 
-            # Obtener URL pública
-            url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+            # Obtener URL pública (manejo múltiples versiones)
+            try:
+                url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+            except Exception as e1:
+                print(f"get_public_url falló: {e1}")
+                # Alternativa: URL firmada
+                url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 3600)
+                url = url_info['signedURL'] if isinstance(url_info, dict) and 'signedURL' in url_info else str(url_info)
+
             print(f"✅ URL pública: {url}")
 
-            # Intentar eliminar el archivo
-            supabase.storage.from_(bucket_name).remove([file_path])
+            # Intentar eliminar el archivo (manejo múltiples versiones)
+            try:
+                # Método para versiones más recientes (lista de rutas)
+                supabase.storage.from_(bucket_name).remove([file_path])
+            except Exception as e1:
+                print(f"Método remove con lista falló: {e1}")
+                # Método para versiones anteriores (ruta directa)
+                supabase.storage.from_(bucket_name).remove(file_path)
+
             print(f"✅ Archivo eliminado correctamente")
 
         except Exception as e:

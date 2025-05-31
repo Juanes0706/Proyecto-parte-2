@@ -23,7 +23,14 @@ def inicializar_storage():
         try:
             # Prueba de conexión simple
             buckets = supabase.storage.list_buckets()
-            print(f"Buckets existentes: {buckets}")
+            bucket_names = []
+            for bucket in buckets:
+                try:
+                    bucket_name = bucket.name if hasattr(bucket, 'name') else str(bucket)
+                    bucket_names.append(bucket_name)
+                except:
+                    bucket_names.append(str(bucket))
+            print(f"Buckets existentes: {bucket_names}")
         except Exception as conn_error:
             print(f"Error al listar buckets existentes: {str(conn_error)}")
 

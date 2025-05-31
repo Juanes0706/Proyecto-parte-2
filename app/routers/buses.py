@@ -90,10 +90,31 @@ async def crear_bus(
                 # Continuar con el flujo normal
 
             try:
-                # Subir la imagen al bucket
-                result = supabase.storage.from_(bucket_name).upload(file_path, contents)
+                # Subir la imagen al bucket con manejo para diferentes versiones de API
+                try:
+                    # Intentar con API más reciente
+                    result = supabase.storage.from_(bucket_name).upload(
+                        path=file_path,
+                        file=contents,
+                        file_options={"content-type": imagen.content_type or "image/jpeg"}
+                    )
+                except Exception as upload_error:
+                    print(f"Error al subir con API reciente: {upload_error}")
+                    # Intentar con API anterior
+                    result = supabase.storage.from_(bucket_name).upload(file_path, contents)
+
                 print(f"Resultado de subida: {result}")
-                imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+
+                # Obtener URL pública con manejo para diferentes versiones de API
+                try:
+                    # Intentar con método más reciente
+                    imagen_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+                except Exception as url_error:
+                    print(f"Error al obtener URL pública: {url_error}")
+                    # Intentar con URL firmada de larga duración
+                    url_info = supabase.storage.from_(bucket_name).create_signed_url(file_path, 31536000)  # 1 año
+                    imagen_url = url_info['signedURL'] if isinstance(url_info, dict) and 'signedURL' in url_info else url_info
+
                 print(f"URL de imagen generada: {imagen_url}")
 
                 # Crear registro en la tabla imagenes en lugar de actualizar buses
