@@ -67,8 +67,10 @@ async def crear_bus(
                     try:
                         supabase.storage.create_bucket(bucket_name, options={"public": True})
                         print(f"Bucket {bucket_name} creado exitosamente")
-                    except Exception as e:
-                        print(f"Error al crear bucket {bucket_name}: {str(e)}")
+                    except Exception:
+                        print(f"Error al crear bucket {bucket_name}")
+                    finally:
+                        pass
 
                 # Simplificar la subida de imágenes y usar la tabla de imagenes
                 extension = os.path.splitext(imagen.filename)[1] if '.' in imagen.filename else '.jpg'
